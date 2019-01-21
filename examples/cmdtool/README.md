@@ -27,7 +27,7 @@ I am using Go Modules so for me `go build` works fine.
 
 - add in `commander.commandsInit` a new entry in the commands map: 
 
-	`commands["mynewcmd"] = "\nmynewcmd\n\tis my new command\n"`
+	`commands["mynewcmd"] = "mynewcmd \n\t is my new command\n"`
 	
 - add in `commander.executeCommand` an appropriate new case:
 
@@ -81,7 +81,7 @@ WIP - only a snapshot:
     kdprovide
          kdprovide makes this node announce that it can provide a value for the given key
     
-    kdputvalue
+    kdputvalue <value>
          kdputvalue
     
     kdupdate
@@ -119,4 +119,4 @@ WIP - only a snapshot:
     HiFromAlice
     <alice> quit
     
-  ![debugexample]()
+  ![debugexample](debug-output.png)
