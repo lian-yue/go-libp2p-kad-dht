@@ -118,5 +118,8 @@ WIP - only a snapshot:
     <alice> kdgetvalue
     HiFromAlice
     <alice> quit
+  
+  
+  Screenshot from an example with debugging output:
     
   ![debugexample](debug-output.png)
