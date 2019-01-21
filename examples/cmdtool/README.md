@@ -102,7 +102,7 @@ WIP - only a snapshot:
 
 ### Example
 
-`./cmdtool -debug -debugfile alice.debug alice`
+`./cmdtool alice`
 
 
     <alice> join
@@ -121,5 +121,7 @@ WIP - only a snapshot:
   
   
   Screenshot from an example with debugging output:
+  
+`./cmdtool -debug -debugfile alice.debug alice`
     
   ![debugexample](debug-output.png)
