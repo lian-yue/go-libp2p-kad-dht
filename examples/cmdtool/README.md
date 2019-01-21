@@ -102,7 +102,7 @@ WIP - only a snapshot:
 
 ### Example
 
-`./cmdtool alice`
+`./cmdtool alice -debug -debugfile=alice.debug alice`
 
 
     <alice> join
