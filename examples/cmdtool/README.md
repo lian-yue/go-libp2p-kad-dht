@@ -118,3 +118,5 @@ WIP - only a snapshot:
     <alice> kdgetvalue
     HiFromAlice
     <alice> quit
+    
+  ![debugexample]()
