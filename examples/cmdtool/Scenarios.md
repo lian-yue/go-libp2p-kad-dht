@@ -44,8 +44,8 @@ Then you open another session.
 
 <table>
 <tr><th>Kademlia</th><th>go-libp2p-kad-dht</th><th>./cmdtool</th></tr>
-<tr><td>PING</td><tc>NA</td><td>NA</td></tr>
+<tr><td>PING</td><td>NA</td><td>NA</td></tr>
 <tr><td>STORE</td><td>func (dht *IpfsDHT) PutValue(ctx context.Context, key string, value []byte, opts ...ropts.Option) (err error)</td><td>kdputkeyvalue</td></tr>
-<tr><td>FIND_NODE</td><tc>PING</td><td>PING</td></tr>
-<tr><td>FIND_VALUE</td><tc>PING</td><td>PING</td></tr>
+<tr><td>FIND_NODE</td><td> </td><td> </td></tr>
+<tr><td>FIND_VALUE</td><td> </td><td> </td></tr>
 </table>
