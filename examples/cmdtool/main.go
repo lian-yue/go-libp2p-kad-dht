@@ -5,22 +5,22 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-discovery"
 	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
+	"github.com/stefanhans/go-libp2p-kad-dht"
 )
 
 var (
-	name   string
-	prompt string
+	name string
+	//prompt string
 
 	err         error
 	ctx         = context.Background()
@@ -45,61 +45,43 @@ var bootstrapPeers = []string{
 	"/ip4/178.62.158.247/tcp/4001/ipfs/QmSoLer265NRgSp2LA3dPaeykiS1J6DifTC88f5uVQKNAd",
 }
 
+func prompt() string {
+	return fmt.Sprintf("< %s %s> ", time.Now().Format("Jan 2 15:04:05.000"), name)
+}
+
 func main() {
 
-	debug := flag.Bool("debug", false, "Switch on debugging")
+	// debug switches on debugging
+	debug := flag.Bool("debug", false, "switches on debugging")
 
-	// log is the file to write logger output
+	// debugfilename is the file to write debugging output
 	debugfilename := flag.String("debugfile", "", "file to write debugging output")
+
+	// Parse input and check arguments
 	flag.Parse()
 	if flag.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "missing or wrong parameter: <name>")
 		os.Exit(1)
 	}
-
 	name = flag.Arg(0)
-	prompt = "<" + name + "> "
 
-	// "-debug" writes debugging to file
+	// Start debugging to file, if switched on
 	if *debug {
-		err = startDebugging((*debugfilename))
+		debugfile, err := startDebugging(*debugfilename)
 		if err != nil {
 			panic(err)
 		}
+		defer debugfile.Close()
 	}
-
-	// Start logging into one file each session
-	logfile, err = startLogging(name)
-	if err != nil {
-		log.Fatalf("error starting logging: %v", err)
-	}
-	defer logfile.Close()
-
-	// Start logging into one common file for all sessions of today
-	//cLog, commonLogfile, err = startCommonLogging(name, "C24DFD14-E8AF-44B7-8619-B552E58B4673")
-	//if err != nil {
-	//	log.Fatalf("error starting logging: %v", err)
-	//}
-	//defer commonLogfile.Close()
 
 	// libp2p.New constructs a new libp2p Host. Other options can be added
 	// here.
 	node, err = libp2p.New(ctx, libp2p.DisableRelay())
 	//libp2p.Identity(privRedId),
 	//libp2p.ListenAddrs([]multiaddr.Multiaddr(config.ListenAddresses)...),
-
 	if err != nil {
 		panic(err)
 	}
-
-	//fmt.Printf("node.ID: %v\n", node.ID())
-	//for i, addr := range node.Addrs() {
-	//	fmt.Printf("%d: %v\n", i, addr)
-	//}
-	//bootstrapPeerAddrs, err = StringsToAddrs(bootstrapPeers)
-	//if err != nil {
-	//	panic(err)
-	//}
 
 	// Start a DHT, for use in peer discovery. We can't just make a new DHT
 	// client because we want each peer to maintain its own local copy of the
@@ -110,37 +92,39 @@ func main() {
 		panic(err)
 	}
 
-	// Initialize chat command usage
+	// Initialize commands
 	commandsInit()
 
-	fmt.Fprint(os.Stdin, prompt)
+	// Start with a prompt
+	fmt.Fprint(os.Stdin, prompt())
 
+	// Define the reader for stdin
 	bio := bufio.NewReader(os.Stdin)
 
+	// Goroutine for reading lines from stdin into a channel
 	go func() {
 		for {
 			line, hasPrefix, err := bio.ReadLine()
 			if err != nil {
 				panic(err)
 			}
-			writeChan <- fmt.Sprintf("%s", line)
+			cmdChan <- fmt.Sprintf("%s", line)
 			if hasPrefix {
 				return
 			}
 		}
 	}()
 
+	// Goroutine for command execution
 	go func() {
 		for {
 			select {
-			case str := <-writeChan:
+			case str := <-cmdChan:
 				executeCommand(str)
-
-				//fmt.Printf("%s", str)
-
 			}
 		}
 	}()
 
+	// Don't exit
 	select {}
 }

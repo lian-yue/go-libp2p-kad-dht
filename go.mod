@@ -17,7 +17,6 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
 	github.com/jbenet/go-temp-err-catcher v0.0.0-20150120210811-aac704a3f4f2 // indirect
 	github.com/jbenet/goprocess v0.0.0-20160826012719-b497e2f366b8
-	github.com/jroimartin/gocui v0.4.0
 	github.com/libp2p/go-addr-util v2.0.7+incompatible // indirect
 	github.com/libp2p/go-buffer-pool v0.1.1 // indirect
 	github.com/libp2p/go-conn-security v0.1.15 // indirect
@@ -55,14 +54,12 @@ require (
 	github.com/libp2p/go-tcp-transport v2.0.16+incompatible // indirect
 	github.com/libp2p/go-testutil v1.2.10
 	github.com/libp2p/go-ws-transport v2.0.15+incompatible // indirect
-	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/minio/sha256-simd v0.0.0-20190117184323-cc1980cb0338 // indirect
 	github.com/mr-tron/base58 v1.1.0
 	github.com/multiformats/go-multiaddr v1.4.0
 	github.com/multiformats/go-multibase v0.3.0 // indirect
 	github.com/multiformats/go-multihash v1.0.8
 	github.com/multiformats/go-multistream v0.3.9
-	github.com/nsf/termbox-go v0.0.0-20190104133558-0938b5187e61 // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/go-notifier v0.0.0-20170827234753-097c5d47330f // indirect
@@ -72,7 +69,6 @@ require (
 	github.com/whyrusleeping/mafmt v1.2.8 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/yamux v1.1.2 // indirect
-	golang.org/x/crypto v0.0.0-20190103213133-ff983b9c42bc // indirect
+	golang.org/x/crypto v0.0.0-20190123085648-057139ce5d2b // indirect
 	golang.org/x/net v0.0.0-20190119204137-ed066c81e75e // indirect
-	golang.org/x/sys v0.0.0-20190121090251-770c60269bf0 // indirect
 )

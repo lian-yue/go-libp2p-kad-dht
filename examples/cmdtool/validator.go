@@ -1,7 +1,5 @@
 package main
 
-import "log"
-
 //type blankValidator struct{}
 //
 //func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
@@ -12,7 +10,7 @@ type NullValidator struct{}
 
 // Validate always returns success
 func (nv NullValidator) Validate(key string, value []byte) error {
-	log.Printf("NullValidator Validate: %s - %s", key, string(value))
+	log.Debugf("NullValidator Validate: %s - %s", key, string(value))
 	return nil
 }
 
@@ -22,7 +20,7 @@ func (nv NullValidator) Select(key string, values [][]byte) (int, error) {
 	for i := 0; i < len(values); i++ {
 		strs[i] = string(values[i])
 	}
-	log.Printf("NullValidator Select: %s - %v", key, strs)
+	log.Debugf("NullValidator Select: %s - %v", key, strs)
 
 	return 0, nil
 }
