@@ -1,6 +1,6 @@
 ### Hello World
 
-The simplest scenario is to save a value and to get it afterward.
+The simplest scenario is to save a value and to get it out back.
 
 - join via provided bootstrap servers
 - set a value for a key
