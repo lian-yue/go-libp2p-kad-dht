@@ -20,7 +20,6 @@ import (
 
 var (
 	name string
-	//prompt string
 
 	err         error
 	ctx         = context.Background()
@@ -60,14 +59,15 @@ func main() {
 	// Parse input and check arguments
 	flag.Parse()
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "missing or wrong parameter: <name>")
+		_, _ = fmt.Fprintln(os.Stderr, "missing or wrong parameter: <name>")
+		// todo usage
 		os.Exit(1)
 	}
 	name = flag.Arg(0)
 
 	// Start debugging to file, if switched on
 	if *debug {
-		debugfile, err := startDebugging(*debugfilename)
+		debugfile, err := startLogging(*debugfilename)
 		if err != nil {
 			panic(err)
 		}
@@ -96,7 +96,10 @@ func main() {
 	commandsInit()
 
 	// Start with a prompt
-	fmt.Fprint(os.Stdin, prompt())
+	_, err = fmt.Fprint(os.Stdin, prompt())
+	if err != nil {
+		panic(err)
+	}
 
 	// Define the reader for stdin
 	bio := bufio.NewReader(os.Stdin)

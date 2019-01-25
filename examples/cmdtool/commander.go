@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/libp2p/go-libp2p-peer"
 	"os"
 	"sort"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-discovery"
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stefanhans/go-libp2p-kad-dht"
@@ -28,11 +28,14 @@ var (
 
 func commandsInit() {
 	commands = make(map[string]string)
-	commands["self"] = "self [all] \n\t show information of this node\n" +
+
+	// NODE
+	commands["node"] = "node [all] \n\t show information of this node\n" +
 		"\t\t - ID\n" +
 		"\t\t - Addresses\n" +
 		"\t\t - Peerstore\n"
 
+	// BOOTSTRAP
 	commands["bootstrap"] = "bootstrap \n\t list bootstrap peers suggested to join\n"
 	commands["join"] = "join [<bootstrap> ...] \n\t join bootstrap peer(s)\n" +
 		"\n" +
@@ -42,15 +45,16 @@ func commandsInit() {
 		"\t h.Network.Dial, and block until a connection is open, or an error is\n" +
 		"\t returned. \n"
 
+	// RENDEZVOUS
 	commands["rendezvous"] = "rendezvous \n\t show current rendezvous string with cid set\n"
 	commands["setrendezvous"] = "setrendezvous <string> \n\t set cid of string as rendezvous point\n"
 
-	commands["advertise"] = "advertise \n\t advertise rendezvous point\n" +
+	commands["advertise"] = "advertise [<rendezvous> default: as stored by setrendezvous [timeout in seconds, default: 10]] \n\t advertise rendezvous point\n" +
 		"\n" +
 		"\t Advertise is a utility function that persistently advertises a service through an Advertiser\n" +
 		"\t using RoutingDiscovery which is an implementation of discovery using ContentRouting\n"
 
-	// Cid
+	// CID
 	commands["kdprovide [timeout in seconds, default: 10]"] = "kdprovide announces providing this key\n" +
 		"\n" +
 		"\t Provide makes this node announce that it can provide a value for the given key\n"
@@ -79,10 +83,9 @@ func commandsInit() {
 	commands["kdgetvalues"] = "kdgetvalues \n\t kdgetvalues\n"
 
 	// RoutingTable
-	commands["kdroutingtable"] = "kdroutingtable [all] \n\t kdroutingtable shows the routing table with its buckets\n"
+	commands["routingtable"] = "routingtable [all] \n\t kdroutingtable shows the routing table with its buckets\n"
 
-	commands["close"] = "close DHT\n" +
-		"\t Close calls Process Close\n"
+	commands["close"] = "close \n\t Close calls Process Close\n"
 
 	// Internals
 	commands["debug"] = "debug (on <filename>)|(off) \n\t debug starts or stops writing debugging output in specified file\n"
@@ -111,8 +114,8 @@ func executeCommand(commandline string) {
 		// Switch according to the first word and call appropriate function with the rest as arguments
 		switch commandFields[0] {
 
-		case "self":
-			self(commandFields[1:])
+		case "node":
+			nodeInfo(commandFields[1:])
 
 		case "bootstrap":
 			listBootstrap(commandFields[1:])
@@ -172,7 +175,7 @@ func executeCommand(commandline string) {
 			kDhtGetValues(commandFields[1:])
 
 		// RoutingTable
-		case "kdroutingtable":
+		case "routingtable":
 			kDhtRoutingTable(commandFields[1:])
 
 		case "close":
@@ -240,30 +243,47 @@ func executeCommand(commandline string) {
 
 // Display the usage of all available commands
 func usage() {
-	// enhance: order not deterministic bug
 	for _, key := range commandKeys {
 		fmt.Printf("%v\n", commands[key])
 	}
 	fmt.Printf(prompt())
 }
 
-func self(arguments []string) {
+func nodeInfo(arguments []string) {
 
+	// Id
 	fmt.Printf("%v\t%s\n", node.ID().String(), node.ID().Pretty())
-	for i, addr := range node.Addrs() {
 
-		fmt.Printf("%d: %s\n", i, addr)
+	if len(arguments) > 0 && arguments[0] == "all" {
+		for i, addr := range node.Addrs() {
+
+			fmt.Printf("%d: %s\n", i, addr)
+		}
+		//node.Peerstore().AddAddrs(node.ID(), node.Addrs(), peerstore.AddressTTL)
+		pstore := node.Peerstore()
+
+		//fmt.Printf("%v\n", node.Peerstore())
+		//fmt.Printf("%v\n", peerstore.Peers())
+		fmt.Printf("Peers with addresse(s): %v\n", pstore.PeersWithAddrs())
+		fmt.Printf("Peers with key(s): %v\n", pstore.PeersWithKeys())
+		//fmt.Printf("%v\n", peerstore.Addrs())
+
+		protocols, err := pstore.GetProtocols(node.ID())
+		if err != nil {
+			fmt.Printf("error: peerstore.GetProtocols(node.ID()): %v\n", err)
+		}
+		fmt.Printf("Protocol(s): %v\n", protocols)
+
 	}
-	//node.Peerstore().AddAddrs(node.ID(), node.Addrs(), peerstore.AddressTTL)
-	fmt.Printf("%v\n", node.Peerstore())
 
 	fmt.Printf(prompt())
 }
 
 func listBootstrap(arguments []string) {
+	_ = arguments[0]
 
-	for i, peer := range bootstrapPeers {
-		fmt.Printf("%d: %s\n", i, peer)
+	for i, p := range bootstrapPeers {
+		fmt.Printf("%d: %s\n", i, p)
 	}
 	fmt.Printf(prompt())
 
@@ -333,6 +353,7 @@ func joinBootstrap(arguments []string) {
 }
 
 func rendezvous(arguments []string) {
+	_ = arguments[0]
 
 	fmt.Printf("%q\n", rendezvousString)
 	fmt.Printf(prompt())
@@ -353,11 +374,15 @@ func setRendezvous(arguments []string) {
 }
 
 func advertise(arguments []string) {
+	ns := rendezvousString
+	if len(arguments) > 0 {
+		ns = arguments[0]
+	}
 
 	if routingDiscovery == nil {
 		routingDiscovery = discovery.NewRoutingDiscovery(kademliaDHT)
 	}
-	discovery.Advertise(ctx, routingDiscovery, rendezvousString)
+	discovery.Advertise(ctx, routingDiscovery, ns)
 
 	fmt.Printf(prompt())
 }
@@ -368,7 +393,7 @@ func kDhtProvide(arguments []string) {
 	if len(arguments) > 0 {
 		sec, err := strconv.Atoi(arguments[0])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[0], err)
+			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[0], err)
 
 			fmt.Printf(prompt())
 			return
@@ -376,7 +401,7 @@ func kDhtProvide(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
@@ -398,7 +423,7 @@ func kDhtFindProviders(arguments []string) {
 	if len(arguments) > 0 {
 		sec, err := strconv.Atoi(arguments[0])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[0], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
 			fmt.Printf(prompt())
 			return
@@ -406,7 +431,7 @@ func kDhtFindProviders(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
@@ -420,9 +445,9 @@ func kDhtFindProviders(arguments []string) {
 		fmt.Printf("Error: kademliaDHT.FindProviders: %v\n", err)
 		return
 	}
-	for i, peer := range peers {
-		fmt.Printf("%d\t%v\n", i, peer.ID)
-		for j, addr := range peer.Addrs {
+	for i, p := range peers {
+		fmt.Printf("%d\t%v\n", i, p.ID)
+		for j, addr := range p.Addrs {
 			fmt.Printf("\t%d\t%v\n", j, addr)
 		}
 	}
@@ -434,7 +459,7 @@ func kDhtFindProvidersAsync(arguments []string) {
 	if len(arguments) > 0 {
 		sec, err := strconv.Atoi(arguments[0])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[0], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
 			fmt.Printf(prompt())
 			return
@@ -442,7 +467,7 @@ func kDhtFindProvidersAsync(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
@@ -454,12 +479,12 @@ func kDhtFindProvidersAsync(arguments []string) {
 
 	peersChan := kademliaDHT.FindProvidersAsync(ctxTimeOut, rendezvousPoint, 5)
 
-	var peer peerstore.PeerInfo
+	var p peerstore.PeerInfo
 	for l := 0; l < 20; l++ {
 
-		peer = <-peersChan
-		fmt.Printf("%d: %v\n", l, peer.ID)
-		for i, addr := range peer.Addrs {
+		p = <-peersChan
+		fmt.Printf("%d: %v\n", l, p.ID)
+		for i, addr := range p.Addrs {
 			fmt.Printf("\t%d\t%v\n", i, addr)
 		}
 	}
@@ -471,7 +496,7 @@ func kDhtFindPeer(arguments []string) {
 	if len(arguments) > 1 {
 		sec, err := strconv.Atoi(arguments[1])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[1], err)
+			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[1], err)
 
 			fmt.Printf(prompt())
 			return
@@ -479,7 +504,7 @@ func kDhtFindPeer(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
@@ -502,24 +527,26 @@ func kDhtFindPeer(arguments []string) {
 
 	}
 
-	peer, err := kademliaDHT.FindPeer(ctxTimeOut, peerId)
+	p, err := kademliaDHT.FindPeer(ctxTimeOut, peerId)
 	if err != nil {
 		fmt.Printf("Error: kademliaDHT.FindPeer: %v\n", err)
 		fmt.Printf(prompt())
 		return
 	}
 
-	fmt.Printf("%v\t%s\n", peer.ID.String(), peer.ID.Pretty())
-	for i, addr := range peer.Addrs {
+	fmt.Printf("%v\t%s\n", p.ID.String(), p.ID.Pretty())
+	for i, addr := range p.Addrs {
 
 		fmt.Printf("%d: %s\n", i, addr)
 	}
 	fmt.Printf(prompt())
 }
 func kDhtFindLocal(arguments []string) {
-	peer := kademliaDHT.FindLocal(node.ID())
-	fmt.Printf("%v\t%s\n", peer.ID.String(), peer.ID.Pretty())
-	for i, addr := range peer.Addrs {
+	_ = arguments[0]
+
+	p := kademliaDHT.FindLocal(node.ID())
+	fmt.Printf("%v\t%s\n", p.ID.String(), p.ID.Pretty())
+	for i, addr := range p.Addrs {
 
 		fmt.Printf("%d: %s\n", i, addr)
 	}
@@ -531,7 +558,7 @@ func kDhtUpdate(arguments []string) {
 	if len(arguments) > 0 {
 		sec, err := strconv.Atoi(arguments[0])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[0], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
 			fmt.Printf(prompt())
 			return
@@ -539,7 +566,7 @@ func kDhtUpdate(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
@@ -562,7 +589,7 @@ func kDhtPutValue(arguments []string) {
 	if len(arguments) > 1 {
 		sec, err := strconv.Atoi(arguments[1])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[1], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
 			fmt.Printf(prompt())
 			return
@@ -570,23 +597,29 @@ func kDhtPutValue(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
 		}
 	}
 
-	ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
-	defer cancel()
-	//peerId, err := peer.IDFromString(arguments[0])
-	//if err != nil {
-	//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
-	//	return
-	//}
-	err = kademliaDHT.PutValue(ctxTimeOut, rendezvousString, []byte(arguments[0]), dht.Quorum(1))
-	if err != nil {
-		fmt.Printf("Error: kademliaDHT.PutValue: %v\n", err)
+	if len(arguments) > 0 {
+		ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+		defer cancel()
+		//peerId, err := peer.IDFromString(arguments[0])
+		//if err != nil {
+		//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
+		//	return
+		//}
+		err = kademliaDHT.PutValue(ctxTimeOut, rendezvousString, []byte(arguments[0]), dht.Quorum(1))
+		if err != nil {
+			fmt.Printf("Error: kademliaDHT.PutValue: %v\n", err)
+			fmt.Printf(prompt())
+			return
+		}
+	} else {
+		fmt.Printf("Error: no value specified\n")
 		fmt.Printf(prompt())
 		return
 	}
@@ -598,7 +631,7 @@ func kDhtPutKeyValue(arguments []string) {
 	if len(arguments) > 2 {
 		sec, err := strconv.Atoi(arguments[2])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[2], err)
+			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[2], err)
 
 			fmt.Printf(prompt())
 			return
@@ -606,23 +639,29 @@ func kDhtPutKeyValue(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
 		}
 	}
 
-	ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
-	defer cancel()
-	//peerId, err := peer.IDFromString(arguments[0])
-	//if err != nil {
-	//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
-	//	return
-	//}
-	err = kademliaDHT.PutValue(ctxTimeOut, arguments[0], []byte(arguments[1]), dht.Quorum(1))
-	if err != nil {
-		fmt.Printf("Error: kademliaDHT.PutValue: %v\n", err)
+	if len(arguments) > 0 {
+		ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+		defer cancel()
+		//peerId, err := peer.IDFromString(arguments[0])
+		//if err != nil {
+		//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
+		//	return
+		//}
+		err = kademliaDHT.PutValue(ctxTimeOut, arguments[0], []byte(arguments[1]), dht.Quorum(1))
+		if err != nil {
+			fmt.Printf("Error: kademliaDHT.PutValue: %v\n", err)
+			fmt.Printf(prompt())
+			return
+		}
+	} else {
+		fmt.Printf("Error: no key and no value specified\n")
 		fmt.Printf(prompt())
 		return
 	}
@@ -634,7 +673,7 @@ func kDhtGetValue(arguments []string) {
 	if len(arguments) > 0 {
 		sec, err := strconv.Atoi(arguments[0])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[0], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
 			fmt.Printf(prompt())
 			return
@@ -642,7 +681,7 @@ func kDhtGetValue(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
@@ -671,7 +710,7 @@ func kDhtGetKeyValue(arguments []string) {
 	if len(arguments) > 1 {
 		sec, err := strconv.Atoi(arguments[1])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[1], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
 			fmt.Printf(prompt())
 			return
@@ -679,27 +718,33 @@ func kDhtGetKeyValue(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("%Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
 		}
 	}
 
-	ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
-	defer cancel()
-	//peerId, err := peer.IDFromString(arguments[0])
-	//if err != nil {
-	//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
-	//	return
-	//}
-	val, err := kademliaDHT.GetValue(ctxTimeOut, arguments[0], dht.Quorum(1))
-	if err != nil {
-		fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
+	if len(arguments) > 0 {
+		ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+		defer cancel()
+		//peerId, err := peer.IDFromString(arguments[0])
+		//if err != nil {
+		//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
+		//	return
+		//}
+		val, err := kademliaDHT.GetValue(ctxTimeOut, arguments[0], dht.Quorum(1))
+		if err != nil {
+			fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
+			fmt.Printf(prompt())
+			return
+		}
+		fmt.Printf("%s\n", val)
+	} else {
+		fmt.Printf("Error: no key specified\n")
 		fmt.Printf(prompt())
 		return
 	}
-	fmt.Printf("%s\n", val)
 	fmt.Printf(prompt())
 }
 
@@ -708,7 +753,7 @@ func kDhtGetValues(arguments []string) {
 	if len(arguments) > 1 {
 		sec, err := strconv.Atoi(arguments[1])
 		if err != nil {
-			fmt.Printf("%sError: %q is not a valid number: %v\n", prompt(), arguments[1], err)
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
 			fmt.Printf(prompt())
 			return
@@ -716,29 +761,35 @@ func kDhtGetValues(arguments []string) {
 		if sec > 0 {
 			timeout = sec
 		} else {
-			fmt.Printf("%sError: %d is zero or negative\n", prompt(), sec)
+			fmt.Printf("%Error: %d is zero or negative\n", sec)
 
 			fmt.Printf(prompt())
 			return
 		}
 	}
 
-	ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
-	defer cancel()
-	//peerId, err := peer.IDFromString(arguments[0])
-	//if err != nil {
-	//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
-	//	return
-	//}
-	recvdVals, err := kademliaDHT.GetValues(ctxTimeOut, arguments[0], 1)
-	if err != nil {
-		fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
+	if len(arguments) > 0 {
+		ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+		defer cancel()
+		//peerId, err := peer.IDFromString(arguments[0])
+		//if err != nil {
+		//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
+		//	return
+		//}
+		recvdVals, err := kademliaDHT.GetValues(ctxTimeOut, arguments[0], 1)
+		if err != nil {
+			fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
+			fmt.Printf(prompt())
+			return
+		}
+		for i, recvdVal := range recvdVals {
+
+			fmt.Printf("%d: %q from %v\n", i, recvdVal.Val, recvdVal.From)
+		}
+	} else {
+		fmt.Printf("Error: no key and no value specified\n")
 		fmt.Printf(prompt())
 		return
-	}
-	for i, recvdVal := range recvdVals {
-
-		fmt.Printf("%d: %q from %v\n", i, recvdVal.Val, recvdVal.From)
 	}
 
 	fmt.Printf(prompt())
@@ -750,8 +801,8 @@ func kDhtRoutingTable(arguments []string) {
 
 	if len(arguments) > 0 && arguments[0] == "all" {
 
-		for i, peer := range routingTable.ListPeers() {
-			fmt.Printf("%d: %v\n", i, peer.String())
+		for i, p := range routingTable.ListPeers() {
+			fmt.Printf("%d: %v\n", i, p.String())
 		}
 	}
 
@@ -761,6 +812,8 @@ func kDhtRoutingTable(arguments []string) {
 }
 
 func kDhtClose(arguments []string) {
+	_ = arguments[0]
+
 	err = kademliaDHT.Close()
 	if err != nil {
 		panic(err)
@@ -770,10 +823,17 @@ func kDhtClose(arguments []string) {
 
 func kDhtDebug(arguments []string) {
 
+	if len(arguments) == 0 ||
+		(len(arguments) == 1 && arguments[0] != "off") {
+		fmt.Printf("Error: wrong input. Usage: \n\t 'debug (on <filename>) | off\n")
+		fmt.Printf(prompt())
+		return
+	}
+
 	if arguments[0] == "on" && len(arguments) > 1 {
-		tmpDebugfile, err = startDebugging(arguments[1])
+		tmpDebugfile, err = startLogging(arguments[1])
 		if err != nil {
-			panic(err)
+			fmt.Printf("Error: startLogging: %v\n", err)
 		}
 
 		log.Infof("Start debugging ... ")
@@ -781,7 +841,7 @@ func kDhtDebug(arguments []string) {
 
 	if arguments[0] == "off" {
 		log.Infof("Stop debugging ")
-		tmpDebugfile.Close()
+		_ = tmpDebugfile.Close()
 	}
 
 	fmt.Printf(prompt())
@@ -796,6 +856,7 @@ func quitCmdTool(arguments []string) {
 }
 
 func play(arguments []string) {
+	_ = arguments[0]
 
 	for i, addr := range node.Addrs() {
 
