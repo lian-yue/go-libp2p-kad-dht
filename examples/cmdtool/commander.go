@@ -69,26 +69,26 @@ func commandsInit() {
 	commands["kdupdate"] = "kdupdate \n\t kdupdate signals the routingTable to Update its last-seen status on the given peer.\n"
 
 	// Value
-	commands["kdputvalue"] = "kdputvalue value [timeout in seconds, default: 10]\n\t kdputvalue puts a value to the rendezvous point" +
+	commands["putvalue"] = "putvalue value [timeout in seconds, default: 10]\n\t putvalue puts a value to the rendezvous point" +
 		"\n" +
 		"\t PutValue adds value corresponding to given Key.\n" +
 		"\t This is the top level \"Store\" operation of the DHT\n"
-	commands["kdputkeyvalue"] = "kdputkeyvalue key value [timeout in seconds, default: 10]\n\t kdputvalue puts a key/value pair" +
+	commands["putkeyvalue"] = "putkeyvalue key value [timeout in seconds, default: 10]\n\t putvalue puts a key/value pair" +
 		"\n" +
 		"\t PutValue adds value corresponding to given Key.\n" +
 		"\t This is the top level \"Store\" operation of the DHT\n"
 
-	commands["kdgetvalue"] = "kdgetvalue \n\t kdgetvalue\n"
-	commands["kdgetkeyvalue"] = "kdgetkeyvalue \n\t kdgetvalue\n"
-	commands["kdgetvalues"] = "kdgetvalues \n\t kdgetvalues\n"
+	commands["getvalue"] = "getvalue [timeout in seconds, default: 10] \n\t getvalue gets the value of the rendezvous point\n"
+	commands["getkeyvalue"] = "getkeyvalue key [timeout in seconds, default: 10] \n\t getkeyvalue gets the value of given key\n"
+	commands["getvalues"] = "getvalues \n\t getvalues\n"
 
 	// RoutingTable
-	commands["routingtable"] = "routingtable [all] \n\t kdroutingtable shows the routing table with its buckets\n"
+	commands["routingtable"] = "routingtable [all] \n\t routingtable shows the routing table with its buckets\n"
 
 	commands["close"] = "close \n\t Close calls Process Close\n"
 
 	// Internals
-	commands["debug"] = "debug (on <filename>)|(off) \n\t debug starts or stops writing debugging output in specified file\n"
+	commands["debug"] = "debug (on <filename>)|off \n\t debug starts or stops writing debugging output in specified file\n"
 	commands["play"] = "play  \n\t for developer playing\n"
 
 	commands["quit"] = "quit  \n\t close the session and exit\n"
@@ -157,21 +157,21 @@ func executeCommand(commandline string) {
 			kDhtUpdate(commandFields[1:])
 
 		// Value
-		case "kdputvalue":
+		case "putvalue":
 			kDhtPutValue(commandFields[1:])
 
-		case "kdputkeyvalue":
+		case "putkeyvalue":
 			kDhtPutKeyValue(commandFields[1:])
 
 		// Value
-		case "kdgetvalue":
+		case "getvalue":
 			kDhtGetValue(commandFields[1:])
 
-		case "kdgetkeyvalue":
+		case "getkeyvalue":
 			kDhtGetKeyValue(commandFields[1:])
 
 		// Value
-		case "kdgetvalues":
+		case "getvalues":
 			kDhtGetValues(commandFields[1:])
 
 		// RoutingTable
@@ -353,7 +353,6 @@ func joinBootstrap(arguments []string) {
 }
 
 func rendezvous(arguments []string) {
-	_ = arguments[0]
 
 	fmt.Printf("%q\n", rendezvousString)
 	fmt.Printf(prompt())
@@ -749,6 +748,47 @@ func kDhtGetKeyValue(arguments []string) {
 }
 
 func kDhtGetValues(arguments []string) {
+	timeout := 30
+	if len(arguments) > 0 {
+		sec, err := strconv.Atoi(arguments[1])
+		if err != nil {
+			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
+
+			fmt.Printf(prompt())
+			return
+		}
+		if sec > 0 {
+			timeout = sec
+		} else {
+			fmt.Printf("%Error: %d is zero or negative\n", sec)
+
+			fmt.Printf(prompt())
+			return
+		}
+	}
+
+	ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
+	//peerId, err := peer.IDFromString(arguments[0])
+	//if err != nil {
+	//	fmt.Printf("Error: peer.IDFromString: %v\n", err)
+	//	return
+	//}
+	recvdVals, err := kademliaDHT.GetValues(ctxTimeOut, rendezvousString, 1)
+	if err != nil {
+		fmt.Printf("Error: kademliaDHT.GetValues: %v\n", err)
+		fmt.Printf(prompt())
+		return
+	}
+	for i, recvdVal := range recvdVals {
+
+		fmt.Printf("%d: %q from %v\n", i, recvdVal.Val, recvdVal.From)
+	}
+
+	fmt.Printf(prompt())
+}
+
+func kDhtGetKeyValues(arguments []string) {
 	timeout := 30
 	if len(arguments) > 1 {
 		sec, err := strconv.Atoi(arguments[1])

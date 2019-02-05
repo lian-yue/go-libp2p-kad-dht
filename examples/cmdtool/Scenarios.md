@@ -15,8 +15,8 @@ The simplest scenario is to save a value and to get it out back.
         {<peer.ID Qm*L1KrGM> [/ip4/104.236.179.241/tcp/4001]} joined
         {<peer.ID Qm*wMKPnu> [/ip4/128.199.219.111/tcp/4001]} joined
         Joined with all 5 peers
-        < Jan 23 10:37:45.987 alice> kdputkeyvalue greeting HelloWorld
-        < Jan 23 10:38:26.201 alice> kdgetkeyvalue greeting
+        < Jan 23 10:37:45.987 alice> putkeyvalue greeting HelloWorld
+        < Jan 23 10:38:26.201 alice> getkeyvalue greeting
         HelloWorld
         < Jan 23 10:38:47.083 alice> advertise
         < Jan 23 10:38:50.302 alice>
@@ -35,7 +35,7 @@ Then you open another session.
         {<peer.ID Qm*L1KrGM> [/ip4/104.236.179.241/tcp/4001]} joined
         {<peer.ID Qm*wMKPnu> [/ip4/128.199.219.111/tcp/4001]} joined
         Joined with all 5 peers
-        < Jan 23 10:48:17.605 bob> kdgetkeyvalue greeting
+        < Jan 23 10:48:17.605 bob> getkeyvalue greeting
         HelloWorld
         < Jan 23 10:49:10.927 bob>
         
@@ -46,9 +46,22 @@ Then you open another session.
 
 <table>
 <tr><th>Kademlia</th><th>go-libp2p-kad-dht</th><th>./cmdtool</th></tr>
-<tr><td>PING</td><td>NA</td><td>NA</td></tr>
-<tr><td>STORE</td><td><small>func (dht *IpfsDHT) PutValue(ctx context.Context, key string, value []byte, opts ...ropts.Option) (err error)<br></small>
-hello</td><td>kdputkeyvalue</td></tr>
-<tr><td>FIND_NODE</td><td> </td><td> </td></tr>
-<tr><td>FIND_VALUE</td><td> </td><td> </td></tr>
+<tr>
+    <td>PING</td>
+    <td>NA</td>
+    <td>NA</td>
+</tr>
+<tr>
+    <td>STORE</td>
+    <td>PutValue<br>
+        hello</td>
+    <td>putvalue<br>
+    </td>
+</tr>
+<tr>
+    <td>FIND_NODE</td><td> </td><td> </td>
+</tr>
+<tr>
+    <td>FIND_VALUE</td><td> </td><td> </td>
+</tr>
 </table>
