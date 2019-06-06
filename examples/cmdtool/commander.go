@@ -55,7 +55,11 @@ func commandsInit() {
 		"\t using RoutingDiscovery which is an implementation of discovery using ContentRouting\n"
 
 	// CID
-	commands["kdprovide [timeout in seconds, default: 10]"] = "kdprovide announces providing this key\n" +
+	commands["provide [timeout in seconds, default: 10]"] = "provide announces providing the rendezvous point\n" +
+		"\n" +
+		"\t Provide makes this node announce that it can provide a value for the given key\n"
+
+	commands["providekey key [timeout in seconds, default: 10]"] = "providekey announces providing the specified key\n" +
 		"\n" +
 		"\t Provide makes this node announce that it can provide a value for the given key\n"
 
@@ -101,97 +105,123 @@ func commandsInit() {
 }
 
 // Execute a command specified by the argument string
-func executeCommand(commandline string) {
+func executeCommand(commandline string) bool {
 
 	// Trim prefix and split string by white spaces
 	commandFields := strings.Fields(commandline)
 
 	// Check for empty string without prefix
 	if len(commandFields) > 0 {
-		//log.Printf("Command: %q\n", commandFields[0])
-		//log.Printf("Arguments (%v): %v\n", len(commandFields[1:]), commandFields[1:])
 
 		// Switch according to the first word and call appropriate function with the rest as arguments
 		switch commandFields[0] {
 
 		case "node":
 			nodeInfo(commandFields[1:])
+			return true
 
 		case "bootstrap":
 			listBootstrap(commandFields[1:])
+			return true
 
 		case "join":
 			joinBootstrap(commandFields[1:])
+			return true
 
 		case "rendezvous":
 			rendezvous(commandFields[1:])
+			return true
 
 		case "setrendezvous":
 			setRendezvous(commandFields[1:])
+			return true
 
 		case "advertise":
 			advertise(commandFields[1:])
+			return true
 
 		// Cid
-		case "kdprovide":
+		case "provide":
 			kDhtProvide(commandFields[1:])
+			return true
+
+		// Cid
+		case "providekey":
+			kDhtProvideKey(commandFields[1:])
+			return true
 
 		// Cid
 		case "kdfindproviders":
 			kDhtFindProviders(commandFields[1:])
+			return true
 
 		// Cid
 		case "kdfindprovidersasync":
 			kDhtFindProvidersAsync(commandFields[1:])
+			return true
 
 		// Peer
 		case "kdfindpeer":
 			kDhtFindPeer(commandFields[1:])
+			return true
 
 		// Peer
 		case "kdfindlocal":
 			kDhtFindLocal(commandFields[1:])
+			return true
 
 		// Peer
 		case "kdupdate":
 			kDhtUpdate(commandFields[1:])
+			return true
 
 		// Value
 		case "putvalue":
 			kDhtPutValue(commandFields[1:])
+			return true
 
 		case "putkeyvalue":
 			kDhtPutKeyValue(commandFields[1:])
+			return true
 
 		// Value
 		case "getvalue":
 			kDhtGetValue(commandFields[1:])
+			return true
 
 		case "getkeyvalue":
 			kDhtGetKeyValue(commandFields[1:])
+			return true
 
 		// Value
 		case "getvalues":
 			kDhtGetValues(commandFields[1:])
+			return true
 
 		// RoutingTable
 		case "routingtable":
 			kDhtRoutingTable(commandFields[1:])
+			return true
 
 		case "close":
 			kDhtClose(commandFields[1:])
+			return true
 
 		case "debug":
 			kDhtDebug(commandFields[1:])
+			return true
 
 		case "quit":
 			quitCmdTool(commandFields[1:])
+			return true
 
 		case "play":
 			play(commandFields[1:])
+			return true
 
 		default:
 			usage()
+			return false
 		}
 
 		/*    ******** PACKAGE API ********
@@ -236,9 +266,8 @@ func executeCommand(commandline string) {
 			func (dht *IpfsDHT) Close() error
 		*/
 
-	} else {
-		fmt.Printf(prompt())
 	}
+	return false
 }
 
 // Display the usage of all available commands
@@ -246,7 +275,7 @@ func usage() {
 	for _, key := range commandKeys {
 		fmt.Printf("%v\n", commands[key])
 	}
-	fmt.Printf(prompt())
+
 }
 
 func nodeInfo(arguments []string) {
@@ -276,7 +305,6 @@ func nodeInfo(arguments []string) {
 
 	}
 
-	fmt.Printf(prompt())
 }
 
 func listBootstrap(arguments []string) {
@@ -285,7 +313,6 @@ func listBootstrap(arguments []string) {
 	for i, p := range bootstrapPeers {
 		fmt.Printf("%d: %s\n", i, p)
 	}
-	fmt.Printf(prompt())
 
 }
 
@@ -320,7 +347,8 @@ func joinBootstrap(arguments []string) {
 			go func() {
 				defer wg.Done()
 				if err := node.Connect(context.Background(), *peerinfo); err != nil {
-					panic(err)
+					//panic(err)
+					fmt.Printf("%s NOT joined\n", *peerinfo)
 				} else {
 					fmt.Printf("%s joined\n", *peerinfo)
 				}
@@ -355,7 +383,7 @@ func joinBootstrap(arguments []string) {
 func rendezvous(arguments []string) {
 
 	fmt.Printf("%q\n", rendezvousString)
-	fmt.Printf(prompt())
+
 }
 
 func setRendezvous(arguments []string) {
@@ -369,7 +397,7 @@ func setRendezvous(arguments []string) {
 	} else {
 		fmt.Printf("no rendezvous string specified: %q\n", strings.Join(arguments, " "))
 	}
-	fmt.Printf(prompt())
+
 }
 
 func advertise(arguments []string) {
@@ -383,7 +411,6 @@ func advertise(arguments []string) {
 	}
 	discovery.Advertise(ctx, routingDiscovery, ns)
 
-	fmt.Printf(prompt())
 }
 
 func kDhtProvide(arguments []string) {
@@ -394,7 +421,6 @@ func kDhtProvide(arguments []string) {
 		if err != nil {
 			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[0], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -402,7 +428,6 @@ func kDhtProvide(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -414,7 +439,35 @@ func kDhtProvide(arguments []string) {
 	if err != nil {
 		fmt.Printf("%s %v\n", prompt(), err)
 	}
-	fmt.Printf(prompt())
+}
+
+func kDhtProvideKey(arguments []string) {
+
+	timeout := 10
+	if len(arguments) > 0 {
+		sec, err := strconv.Atoi(arguments[0])
+		if err != nil {
+			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[0], err)
+
+			return
+		}
+		if sec > 0 {
+			timeout = sec
+		} else {
+			fmt.Printf("Error: %d is zero or negative\n", sec)
+
+			return
+		}
+	}
+
+	ctxTimeOut, cancel := context.WithTimeout(ctx, time.Second*time.Duration(timeout))
+	defer cancel()
+
+	err = kademliaDHT.Provide(ctxTimeOut, rendezvousPoint, true)
+	if err != nil {
+		fmt.Printf("%s %v\n", prompt(), err)
+	}
+
 }
 
 func kDhtFindProviders(arguments []string) {
@@ -424,7 +477,6 @@ func kDhtFindProviders(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -432,7 +484,6 @@ func kDhtFindProviders(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -450,7 +501,7 @@ func kDhtFindProviders(arguments []string) {
 			fmt.Printf("\t%d\t%v\n", j, addr)
 		}
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtFindProvidersAsync(arguments []string) {
@@ -460,7 +511,6 @@ func kDhtFindProvidersAsync(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -468,7 +518,6 @@ func kDhtFindProvidersAsync(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -487,7 +536,7 @@ func kDhtFindProvidersAsync(arguments []string) {
 			fmt.Printf("\t%d\t%v\n", i, addr)
 		}
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtFindPeer(arguments []string) {
@@ -497,7 +546,6 @@ func kDhtFindPeer(arguments []string) {
 		if err != nil {
 			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[1], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -505,7 +553,6 @@ func kDhtFindPeer(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -520,7 +567,7 @@ func kDhtFindPeer(arguments []string) {
 		peerId, err = peer.IDFromString(arguments[0])
 		if err != nil {
 			fmt.Printf("Error: peer.IDFromString: %v\n", err)
-			fmt.Printf(prompt())
+
 			return
 		}
 
@@ -529,7 +576,7 @@ func kDhtFindPeer(arguments []string) {
 	p, err := kademliaDHT.FindPeer(ctxTimeOut, peerId)
 	if err != nil {
 		fmt.Printf("Error: kademliaDHT.FindPeer: %v\n", err)
-		fmt.Printf(prompt())
+
 		return
 	}
 
@@ -538,7 +585,7 @@ func kDhtFindPeer(arguments []string) {
 
 		fmt.Printf("%d: %s\n", i, addr)
 	}
-	fmt.Printf(prompt())
+
 }
 func kDhtFindLocal(arguments []string) {
 	_ = arguments[0]
@@ -549,7 +596,7 @@ func kDhtFindLocal(arguments []string) {
 
 		fmt.Printf("%d: %s\n", i, addr)
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtUpdate(arguments []string) {
@@ -559,7 +606,6 @@ func kDhtUpdate(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -567,7 +613,6 @@ func kDhtUpdate(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -580,7 +625,7 @@ func kDhtUpdate(arguments []string) {
 	//	return
 	//}
 	kademliaDHT.Update(ctxTimeOut, node.ID())
-	fmt.Printf(prompt())
+
 }
 
 func kDhtPutValue(arguments []string) {
@@ -590,7 +635,6 @@ func kDhtPutValue(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -598,7 +642,6 @@ func kDhtPutValue(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -614,15 +657,15 @@ func kDhtPutValue(arguments []string) {
 		err = kademliaDHT.PutValue(ctxTimeOut, rendezvousString, []byte(arguments[0]), dht.Quorum(1))
 		if err != nil {
 			fmt.Printf("Error: kademliaDHT.PutValue: %v\n", err)
-			fmt.Printf(prompt())
+
 			return
 		}
 	} else {
 		fmt.Printf("Error: no value specified\n")
-		fmt.Printf(prompt())
+
 		return
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtPutKeyValue(arguments []string) {
@@ -632,7 +675,6 @@ func kDhtPutKeyValue(arguments []string) {
 		if err != nil {
 			fmt.Printf("%Error: %q is not a valid number: %v\n", arguments[2], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -640,7 +682,6 @@ func kDhtPutKeyValue(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -656,15 +697,15 @@ func kDhtPutKeyValue(arguments []string) {
 		err = kademliaDHT.PutValue(ctxTimeOut, arguments[0], []byte(arguments[1]), dht.Quorum(1))
 		if err != nil {
 			fmt.Printf("Error: kademliaDHT.PutValue: %v\n", err)
-			fmt.Printf(prompt())
+
 			return
 		}
 	} else {
 		fmt.Printf("Error: no key and no value specified\n")
-		fmt.Printf(prompt())
+
 		return
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtGetValue(arguments []string) {
@@ -674,7 +715,6 @@ func kDhtGetValue(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[0], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -682,7 +722,6 @@ func kDhtGetValue(arguments []string) {
 		} else {
 			fmt.Printf("Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -697,11 +736,11 @@ func kDhtGetValue(arguments []string) {
 	val, err := kademliaDHT.GetValue(ctxTimeOut, rendezvousString, dht.Quorum(1))
 	if err != nil {
 		fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
-		fmt.Printf(prompt())
+
 		return
 	}
 	fmt.Printf("%s\n", val)
-	fmt.Printf(prompt())
+
 }
 
 func kDhtGetKeyValue(arguments []string) {
@@ -711,7 +750,6 @@ func kDhtGetKeyValue(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -719,7 +757,6 @@ func kDhtGetKeyValue(arguments []string) {
 		} else {
 			fmt.Printf("%Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -735,16 +772,16 @@ func kDhtGetKeyValue(arguments []string) {
 		val, err := kademliaDHT.GetValue(ctxTimeOut, arguments[0], dht.Quorum(1))
 		if err != nil {
 			fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
-			fmt.Printf(prompt())
+
 			return
 		}
 		fmt.Printf("%s\n", val)
 	} else {
 		fmt.Printf("Error: no key specified\n")
-		fmt.Printf(prompt())
+
 		return
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtGetValues(arguments []string) {
@@ -754,7 +791,6 @@ func kDhtGetValues(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -762,7 +798,6 @@ func kDhtGetValues(arguments []string) {
 		} else {
 			fmt.Printf("%Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -777,7 +812,7 @@ func kDhtGetValues(arguments []string) {
 	recvdVals, err := kademliaDHT.GetValues(ctxTimeOut, rendezvousString, 1)
 	if err != nil {
 		fmt.Printf("Error: kademliaDHT.GetValues: %v\n", err)
-		fmt.Printf(prompt())
+
 		return
 	}
 	for i, recvdVal := range recvdVals {
@@ -785,7 +820,6 @@ func kDhtGetValues(arguments []string) {
 		fmt.Printf("%d: %q from %v\n", i, recvdVal.Val, recvdVal.From)
 	}
 
-	fmt.Printf(prompt())
 }
 
 func kDhtGetKeyValues(arguments []string) {
@@ -795,7 +829,6 @@ func kDhtGetKeyValues(arguments []string) {
 		if err != nil {
 			fmt.Printf("Error: %q is not a valid number: %v\n", arguments[1], err)
 
-			fmt.Printf(prompt())
 			return
 		}
 		if sec > 0 {
@@ -803,7 +836,6 @@ func kDhtGetKeyValues(arguments []string) {
 		} else {
 			fmt.Printf("%Error: %d is zero or negative\n", sec)
 
-			fmt.Printf(prompt())
 			return
 		}
 	}
@@ -819,7 +851,7 @@ func kDhtGetKeyValues(arguments []string) {
 		recvdVals, err := kademliaDHT.GetValues(ctxTimeOut, arguments[0], 1)
 		if err != nil {
 			fmt.Printf("Error: kademliaDHT.GetValue: %v\n", err)
-			fmt.Printf(prompt())
+
 			return
 		}
 		for i, recvdVal := range recvdVals {
@@ -828,11 +860,10 @@ func kDhtGetKeyValues(arguments []string) {
 		}
 	} else {
 		fmt.Printf("Error: no key and no value specified\n")
-		fmt.Printf(prompt())
+
 		return
 	}
 
-	fmt.Printf(prompt())
 }
 
 func kDhtRoutingTable(arguments []string) {
@@ -848,7 +879,6 @@ func kDhtRoutingTable(arguments []string) {
 
 	routingTable.Print()
 
-	fmt.Printf(prompt())
 }
 
 func kDhtClose(arguments []string) {
@@ -858,7 +888,7 @@ func kDhtClose(arguments []string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf(prompt())
+
 }
 
 func kDhtDebug(arguments []string) {
@@ -866,7 +896,7 @@ func kDhtDebug(arguments []string) {
 	if len(arguments) == 0 ||
 		(len(arguments) == 1 && arguments[0] != "off") {
 		fmt.Printf("Error: wrong input. Usage: \n\t 'debug (on <filename>) | off\n")
-		fmt.Printf(prompt())
+
 		return
 	}
 
@@ -884,7 +914,6 @@ func kDhtDebug(arguments []string) {
 		_ = tmpDebugfile.Close()
 	}
 
-	fmt.Printf(prompt())
 }
 
 func quitCmdTool(arguments []string) {
@@ -896,32 +925,37 @@ func quitCmdTool(arguments []string) {
 }
 
 func play(arguments []string) {
-	_ = arguments[0]
 
-	for i, addr := range node.Addrs() {
+	fmt.Printf("rendezvousPoint: %q\n", rendezvousPoint)
+	fmt.Printf("rendezvousPoint.KeyString(): %q\n", rendezvousPoint.KeyString())
 
-		fmt.Printf("%d: %s\n", i, addr)
-		for j, protocol := range addr.Protocols() {
+	//rendezvousPoint.Bytes()
 
-			fmt.Printf("\t%d: %s\n", j, protocol.Name)
-			if protocol.Code == multiaddr.P_IP4 && strings.Contains(addr.String(), "/127.0.0.1/") {
-				id, err := addr.ValueForProtocol(multiaddr.P_TCP)
-				if err != nil {
-					fmt.Printf("Error: addr.ValueForProtocol(multiaddr.P_IP4): %v\n", err)
-					fmt.Printf(prompt())
-					return
-				}
+	//_ = arguments[0]
+	//
+	//for i, addr := range node.Addrs() {
+	//
+	//	fmt.Printf("%d: %s\n", i, addr)
+	//	for j, protocol := range addr.Protocols() {
+	//
+	//		fmt.Printf("\t%d: %s\n", j, protocol.Name)
+	//		if protocol.Code == multiaddr.P_IP4 && strings.Contains(addr.String(), "/127.0.0.1/") {
+	//			id, err := addr.ValueForProtocol(multiaddr.P_TCP)
+	//			if err != nil {
+	//				fmt.Printf("Error: addr.ValueForProtocol(multiaddr.P_IP4): %v\n", err)
+	//
+	//				return
+	//			}
+	//
+	//			myid, err := peer.IDFromString(id)
+	//			if err != nil {
+	//				fmt.Printf("Error: peer.IDFromString(id): %v\n", err)
+	//
+	//				return
+	//			}
+	//			fmt.Printf("myid: %v\n", myid)
+	//		}
+	//	}
+	//}
 
-				myid, err := peer.IDFromString(id)
-				if err != nil {
-					fmt.Printf("Error: peer.IDFromString(id): %v\n", err)
-					fmt.Printf(prompt())
-					return
-				}
-				fmt.Printf("myid: %v\n", myid)
-			}
-		}
-	}
-
-	fmt.Printf(prompt())
 }
